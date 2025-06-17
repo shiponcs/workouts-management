@@ -25,7 +25,7 @@ func NewApplication() (*Application, error) {
 		return nil, err
 	}
 	workoutStore := store.NewPostgresWorkoutStore(pgDB)
-	workoutHandler := api.NewWorkoutHandler(workoutStore)
+	workoutHandler := api.NewWorkoutHandler(workoutStore, logger)
 
 	err = store.MigrateFS(pgDB, migrations.FS, ".")
 	if err != nil {
