@@ -91,10 +91,7 @@ func TestCreateWorkout(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			creaatedWorkout, err := store.CreateWorkout(tt.workout)
-			if tt.wantErr {
-				assert.Error(t, err)
-				return
-			}
+			0
 			require.NoError(t, err)
 			assert.Equal(t, tt.workout.Title, creaatedWorkout.Title)
 			assert.Equal(t, tt.workout.Description, creaatedWorkout.Description)
