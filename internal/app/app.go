@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/shiponcs/femProject/internal/api"
+	"github.com/shiponcs/femProject/internal/middleware"
 	"github.com/shiponcs/femProject/internal/store"
 	"github.com/shiponcs/femProject/migrations"
 )
@@ -17,6 +18,7 @@ type Application struct {
 	WorkoutHandler *api.WorkoutHandler
 	UserHandler    *api.UserHandler
 	TokenHandler   *api.TokenHandler
+	MiddleWare     *middleware.UserMiddleware
 	DB             *sql.DB
 }
 
@@ -33,6 +35,7 @@ func NewApplication() (*Application, error) {
 	workoutHandler := api.NewWorkoutHandler(workoutStore, logger)
 	userHandler := api.NewUserHandler(userStore, logger)
 	tokenHandler := api.NewTokenHandler(tokenStore, userStore, logger)
+	middleWareHandler := middleware.UserMiddleware{UserStore: userStore}
 
 	err = store.MigrateFS(pgDB, migrations.FS, ".")
 	if err != nil {
@@ -44,6 +47,7 @@ func NewApplication() (*Application, error) {
 		WorkoutHandler: workoutHandler,
 		UserHandler:    userHandler,
 		TokenHandler:   tokenHandler,
+		MiddleWare:     &middleWareHandler,
 		DB:             pgDB,
 	}
 
