@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"sync"
 )
 
 type Workout struct {
@@ -59,14 +60,33 @@ func (pg *PostgresWorkoutStore) CreateWorkout(workout *Workout) (*Workout, error
 	if err != nil {
 		return nil, err
 	}
-	// we also need to insert the entries
+
+	// we can insert the entries concurrently
+	errCh := make(chan error, len(workout.Entries))
+	wg := sync.WaitGroup{}
+
 	for indx, entry := range workout.Entries {
-		query := `
-    INSERT INTO workout_entries (workout_id, exercise_name, sets, reps, duration_seconds, weight, notes, order_index)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id
-    `
-		err = tx.QueryRow(query, workout.ID, entry.ExerciseName, entry.Sets, entry.Reps, entry.DurationSeconds, entry.Weight, entry.Notes, entry.OrderIndex).Scan(&workout.Entries[indx].ID)
+		wg.Add(1)
+
+		go func(entry WorkoutEntry) {
+			defer wg.Done()
+			query := `
+			INSERT INTO workout_entries (workout_id, exercise_name, sets, reps, duration_seconds, weight, notes, order_index)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			RETURNING id
+			`
+			err = tx.QueryRow(query, workout.ID, entry.ExerciseName, entry.Sets, entry.Reps, entry.DurationSeconds, entry.Weight, entry.Notes, entry.OrderIndex).Scan(&workout.Entries[indx].ID)
+			if err != nil {
+				errCh <- err
+			}
+
+		}(entry)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
 		if err != nil {
 			return nil, err
 		}
