@@ -1,9 +1,11 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sync"
+	"time"
 )
 
 type Workout struct {
@@ -103,13 +105,15 @@ func (pg *PostgresWorkoutStore) CreateWorkout(workout *Workout) (*Workout, error
 }
 
 func (pg *PostgresWorkoutStore) GetWorkoutByID(id int64) (*Workout, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	workout := &Workout{}
 	query := `
 		SELECT id, title, description, duration_minutes, calories_burned, version
 		FROM workouts
 		WHERE id = $1
 		`
-	err := pg.db.QueryRow(query, id).Scan(&workout.ID, &workout.Title, &workout.Description, &workout.DurationMinutes, &workout.CaloriesBurned, &workout.Version)
+	err := pg.db.QueryRowContext(ctx, query, id).Scan(&workout.ID, &workout.Title, &workout.Description, &workout.DurationMinutes, &workout.CaloriesBurned, &workout.Version)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -126,7 +130,7 @@ func (pg *PostgresWorkoutStore) GetWorkoutByID(id int64) (*Workout, error) {
 		ORDER BY order_index
 		`
 
-	rows, err := pg.db.Query(entryQuery, id)
+	rows, err := pg.db.QueryContext(ctx, entryQuery, id)
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +158,9 @@ func (pg *PostgresWorkoutStore) GetWorkoutByID(id int64) (*Workout, error) {
 }
 
 func (pg *PostgresWorkoutStore) UpdateWorkout(workout *Workout) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
 	tx, err := pg.db.Begin()
 	if err != nil {
 		return err
@@ -167,7 +174,7 @@ func (pg *PostgresWorkoutStore) UpdateWorkout(workout *Workout) error {
   RETURNING version
   `
 	var newVersion int
-	err = tx.QueryRow(query, workout.Title, workout.Description, workout.DurationMinutes, workout.CaloriesBurned, workout.ID, workout.Version).Scan(&newVersion)
+	err = tx.QueryRowContext(ctx, query, workout.Title, workout.Description, workout.DurationMinutes, workout.CaloriesBurned, workout.ID, workout.Version).Scan(&newVersion)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Println("Here", workout.Title, workout.Description, workout.DurationMinutes, workout.CaloriesBurned, workout.ID, workout.Version)
@@ -187,7 +194,7 @@ func (pg *PostgresWorkoutStore) UpdateWorkout(workout *Workout) error {
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `
 
-		_, err := tx.Exec(query,
+		_, err := tx.ExecContext(ctx, query,
 			workout.ID,
 			entry.ExerciseName,
 			entry.Sets,
