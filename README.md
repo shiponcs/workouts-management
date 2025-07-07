@@ -74,3 +74,67 @@ curl -X PUT "http://localhost:8080/workouts/6" \
           ]
         }'
 ```
+
+# Project Architecture Documentation
+
+## Overview
+This project follows several well-established architectural principles and patterns for building a robust and maintainable Go web service.
+
+## Primary Architecture: **Layered/Clean Architecture**
+
+The project is organized into distinct layers with clear separation of concerns:
+
+1. **Presentation Layer** - `internal/api` handlers
+2. **Business/Application Layer** - `internal/app` application setup
+3. **Data Access Layer** - `internal/store` data persistence
+4. **Infrastructure Layer** - `internal/middleware`, `internal/routes`
+
+## Key Architectural Principles Applied
+
+### 1. **Dependency Injection Pattern**
+- The `app.NewApplication()` function creates and wires dependencies
+- Handlers receive store interfaces through constructors (e.g., `NewWorkoutHandler`)
+
+### 2. **Repository Pattern**
+- Abstract interfaces like `WorkoutStore`, `UserStore`, and `TokenStore`
+- Concrete implementations like `PostgresWorkoutStore`
+
+### 3. **Interface Segregation Principle (ISP)**
+- Small, focused interfaces for each store type
+- Handlers depend on interfaces, not concrete implementations
+
+### 4. **Single Responsibility Principle (SRP)**
+- Each handler has a single responsibility (e.g., `WorkoutHandler` only handles workout operations)
+- Separate concerns: authentication (`middleware`), routing (`routes`), data access (`store`)
+
+### 5. **Middleware Pattern**
+- Authentication and authorization implemented as middleware in `internal/middleware/middleware.go`
+- Applied via `routes.SetupRoutes()`
+
+### 6. **Domain-Driven Design (DDD) Elements**
+- Domain entities like `Workout`, `User`
+- Business logic encapsulated in methods (e.g., password hashing in `user_store.go`)
+
+### 7. **Database Migration Pattern**
+- Structured migrations in `migrations` directory
+- Embedded filesystem pattern with `migrations/fs.go`
+
+### 8. **Optimistic Concurrency Control**
+- Version field in workouts for handling concurrent updates
+- Implemented in `UpdateWorkout` method
+- Test scripts demonstrate this pattern: `test_scripts/test_optimistic_concurrency_control.go`
+
+### 9. **RESTful API Design**
+- Standard HTTP methods and status codes
+- Resource-based URLs (e.g., `/workouts/{id}`)
+- JSON request/response format using `utils.WriteJSON`
+
+## Benefits of This Architecture
+
+This architecture promotes:
+- **Testability** - Clear interfaces make unit testing easier
+- **Maintainability** - Separation of concerns allows for easier modifications
+- **Loose Coupling** - Components depend on abstractions, not concrete implementations
+- **Scalability** - Layered approach allows for easy horizontal scaling
+- **Code Reusability** - Interface-based design promotes code reuse
+
